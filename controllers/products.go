@@ -30,7 +30,7 @@ func PostProduct(w http.ResponseWriter, req *http.Request, _ httprouter.Params) 
 	decoder.Decode(&newProduct)
 
 	// Call Storage [storage/product]
-	productStrg := storage.NewProductStorage()
+	productStrg, _ := storage.NewProductStorage()
 	
 	// Call service
 	results, _ := services.PostProduct(newProduct, productStrg)
