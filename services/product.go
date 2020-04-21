@@ -37,7 +37,7 @@ func PostProduct(product models.Product, productStrg models.ProductStorage) ([]*
 	product.Created = time.Now()
 	log.Print("Service", product)
 
-	err := productStrg.InsertProduct(product)
+	err := productStrg.Create(product)
 	
 	if err != nil {
 		return []*models.Product{}, err
