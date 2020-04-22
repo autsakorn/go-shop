@@ -1,14 +1,16 @@
 package models
 
-import "time"
+import (
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+// Product defines the properties of a product
 type Product struct {
-	ID int `json:"id"`
-	Name string `json:"name"`
-	Created time.Time `json:"created"`
-}
-
-type ProductStorage interface {
-	Create(Product) error
-	Update(Product) error
+	ID        primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	Name      string             `json:"name" bson:"name"`
+	Price     float32            `json:"price" bson:"price"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"-" bson:"updated_at"`
 }

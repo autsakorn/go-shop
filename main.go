@@ -2,22 +2,24 @@
 package main
 
 import (
-	"net/http"
 	"log"
-	"github.com/julienschmidt/httprouter"
+	"net/http"
+
 	"github.com/autsakorn/go-shop/controllers"
 	"github.com/autsakorn/go-shop/middleware"
+	"github.com/julienschmidt/httprouter"
 )
 
 var router *httprouter.Router
 
-
 func routes() {
 	router = httprouter.New()
-	router.GET("/product", controllers.GetProducts)
-	router.GET("/product/:id", controllers.GetProduct)
-	router.POST("/product", controllers.PostProduct)
-	router.PATCH("/product", controllers.PatchProduct)
+	router.POST("/product", controllers.CreateProduct)
+	router.DELETE("/product", controllers.DeleteProduct)
+	router.GET("/product", controllers.FindProducts)
+	router.GET("/product/:id", controllers.FindProductByID)
+	router.PATCH("/product", controllers.UpdateProduct)
+	router.PUT("/product", controllers.UpsertProduct)
 }
 
 func main() {
