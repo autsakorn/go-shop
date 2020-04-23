@@ -14,6 +14,8 @@ var router *httprouter.Router
 
 func routes() {
 	router = httprouter.New()
+
+	router.GET("/health-check", controllers.HealthCheck)
 	router.POST("/product", controllers.CreateProduct)
 	router.DELETE("/product", controllers.DeleteProduct)
 	router.GET("/product", controllers.FindProducts)
