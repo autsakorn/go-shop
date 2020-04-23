@@ -5,10 +5,12 @@ import (
 	"net/http"
 )
 
+// ContentTypeMiddleware defines properties
 type ContentTypeMiddleware struct {
 	next http.Handler
 }
 
+// NewContentTypeMiddleware define function
 func NewContentTypeMiddleware(next http.Handler) *ContentTypeMiddleware {
 	return &ContentTypeMiddleware{next: next}
 }

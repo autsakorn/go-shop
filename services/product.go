@@ -99,14 +99,22 @@ func FindProducts(
 	if limit < 1 {
 		limit = 10
 	}
-	skip := CalSkip(page, limit)
-	products, err := sProduct.Find(skip, limit)
-	if err != nil {
-		return results, err
-	}
+
 	var input types.InputProduct
 	totals, _ := sProduct.Count(input)
 	results.Totals = totals
+
+	skip := CalSkip(page, limit)
+	if (skip + 1) > totals {
+		errMessage := "Invalid Page"
+		results.Message = errMessage
+		return results, errors.New(errMessage)
+	}
+	products, err := sProduct.Find(skip, limit)
+	if err != nil {
+		results.Message = fmt.Sprintf("Product %v", err)
+		return results, err
+	}
 
 	results.Data = products
 	return results, nil

@@ -13,21 +13,20 @@ import (
 // Storage of mongo client and collection
 type Storage struct {
 	*mongo.Client
-	*mongo.Collection
 }
 
 // NewMongoStorage connect db and collection
-func NewMongoStorage(ctx context.Context, collection string) (*Storage, error) {
+func NewMongoStorage(ctx context.Context) (*Storage, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	cfg, _ := config.FromEnv()
+	env, _ := config.FromEnv()
 
 	defer cancel()
 	uri := fmt.Sprintf(
 		"mongodb://%s:%s@%s:%d",
-		cfg.MongoUsername,
-		cfg.MongoPassword,
-		cfg.MongoHost,
-		cfg.MongoPort,
+		env.MongoUsername,
+		env.MongoPassword,
+		env.MongoHost,
+		env.MongoPort,
 	)
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
@@ -40,8 +39,7 @@ func NewMongoStorage(ctx context.Context, collection string) (*Storage, error) {
 	}
 
 	ms := Storage{
-		Client:     client,
-		Collection: client.Database(cfg.MongoDatabase).Collection(collection),
+		Client: client,
 	}
 	return &ms, nil
 }
