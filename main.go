@@ -27,5 +27,5 @@ func routes() {
 func main() {
 	routes()
 	m := middleware.NewContentTypeMiddleware(router)
-	log.Fatal(http.ListenAndServe(":8000", m))
+	log.Fatal(http.ListenAndServe(":8011", m))
 }
