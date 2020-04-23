@@ -4,10 +4,10 @@ services:
   app:
     build: .
     ports:
-      - 8001:8001
+      - 8012:8012
     networks:
       - go-shop-app
-    command: gin -a 8000 -p 8001 run main.go
+    command: gin -a 8011 -p 8012 run main.go
     volumes:
       - .:/app
     depends_on: 
