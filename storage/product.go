@@ -27,7 +27,8 @@ type Product interface {
 	Update(types.InputProduct) error
 }
 
-type storage struct {
+// ProductStorage defines properties
+type ProductStorage struct {
 	Collection mongo.Collection
 }
 
@@ -37,13 +38,13 @@ func NewProductStorage(client *mongo.Client) (Product, error) {
 	env, _ := config.FromEnv()
 
 	collection := client.Database(env.MongoDatabase).Collection(collectionName)
-	return storage{
+	return ProductStorage{
 		Collection: *collection,
 	}, nil
 }
 
 // Create new product
-func (s storage) Create(product types.InputCreateProduct) error {
+func (s ProductStorage) Create(product types.InputCreateProduct) error {
 	// Prepare data create
 	create := models.Product{
 		Name:      product.Name,
@@ -60,9 +61,7 @@ func (s storage) Create(product types.InputCreateProduct) error {
 }
 
 // Count products return total rows of products collection
-func (s storage) Count(
-	product types.InputProduct,
-) (int64, error) {
+func (s ProductStorage) Count(product types.InputProduct) (int64, error) {
 	filter := bson.M{}
 	if product.ID != "" {
 		objectID, _ := primitive.ObjectIDFromHex(product.ID)
@@ -78,7 +77,7 @@ func (s storage) Count(
 }
 
 // Delete method for delete product by _id
-func (s storage) Delete(product types.InputDeleteProduct) error {
+func (s ProductStorage) Delete(product types.InputDeleteProduct) error {
 	// Prepare filter _id
 	objectID, _ := primitive.ObjectIDFromHex(product.ID)
 	filter := bson.M{"_id": objectID}
@@ -95,7 +94,7 @@ func (s storage) Delete(product types.InputDeleteProduct) error {
 }
 
 // Find method for list product set based on given skip and limit
-func (s storage) Find(skip int64, limit int64) ([]*models.Product, error) {
+func (s ProductStorage) Find(skip int64, limit int64) ([]*models.Product, error) {
 	ctx := context.Background()
 	var products []*models.Product
 	// Set filter and find option
@@ -124,7 +123,7 @@ func (s storage) Find(skip int64, limit int64) ([]*models.Product, error) {
 }
 
 // FindByID method for find one product by ID
-func (s storage) FindByID(id string) ([]*models.Product, error) {
+func (s ProductStorage) FindByID(id string) ([]*models.Product, error) {
 	var products []*models.Product
 	var result models.Product
 
@@ -141,7 +140,7 @@ func (s storage) FindByID(id string) ([]*models.Product, error) {
 }
 
 // Update method for update product by _id
-func (s storage) Update(product types.InputProduct) error {
+func (s ProductStorage) Update(product types.InputProduct) error {
 
 	objectID, _ := primitive.ObjectIDFromHex(product.ID)
 	filter := bson.M{"_id": objectID}
