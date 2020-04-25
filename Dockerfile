@@ -14,5 +14,8 @@ RUN go mod download
 
 RUN go get github.com/codegangsta/gin
 
+RUN go get github.com/cweill/gotests/...
+
+RUN go get github.com/golang/mock/mockgen
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .

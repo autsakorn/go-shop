@@ -6,368 +6,473 @@ import (
 	"testing"
 
 	"github.com/autsakorn/go-shop/models"
+	"github.com/autsakorn/go-shop/storage/mock"
 	"github.com/autsakorn/go-shop/types"
+	"github.com/golang/mock/gomock"
 )
 
-// Handle Mock Interface
-var createMock func(product types.InputCreateProduct) error
-var countMock func(product types.InputProduct) (int64, error)
-var deleteMock func(product types.InputDeleteProduct) error
-var findByIDMock func(id string) ([]*models.Product, error)
-var findMock func(skip int64, limit int64) ([]*models.Product, error)
-var updateMock func(product types.InputProduct) error
-
-type productStorageMock struct{}
-
-func (s productStorageMock) Create(product types.InputCreateProduct) error {
-	return createMock(product)
-}
-func (s productStorageMock) Count(product types.InputProduct) (int64, error) {
-	return countMock(product)
-}
-func (s productStorageMock) Delete(product types.InputDeleteProduct) error {
-	return deleteMock(product)
-}
-func (s productStorageMock) FindByID(id string) ([]*models.Product, error) {
-	return findByIDMock(id)
-}
-func (s productStorageMock) Find(skip int64, limit int64) ([]*models.Product, error) {
-	return findMock(skip, limit)
-}
-func (s productStorageMock) Update(product types.InputProduct) error {
-	return updateMock(product)
-}
-
-// Start Test
-
 func TestCalSkip(t *testing.T) {
-	type input struct {
+	type args struct {
 		page  int64
 		limit int64
 	}
 	tests := []struct {
 		name string
-		data input
+		args args
 		want int64
 	}{
-		{name: "Page = 0", data: input{page: 0, limit: 5}, want: 0},
-		{name: "Page = 1", data: input{page: 1, limit: 5}, want: 0},
-		{name: "Page = 2", data: input{page: 2, limit: 5}, want: 5},
-		{name: "Page = 5", data: input{page: 5, limit: 5}, want: 20},
-		{name: "Page = 101", data: input{page: 101, limit: 5}, want: 500},
+		{name: "Page = 0", args: args{page: 0, limit: 5}, want: 0},
+		{name: "Page = 1", args: args{page: 1, limit: 5}, want: 0},
+		{name: "Page = 2", args: args{page: 2, limit: 5}, want: 5},
+		{name: "Page = 5", args: args{page: 5, limit: 5}, want: 20},
+		{name: "Page = 101", args: args{page: 101, limit: 5}, want: 500},
 	}
-	for _, test := range tests {
-		skip := CalSkip(test.data.page, test.data.limit)
-
-		if skip != test.want {
-			t.Errorf("CalSkip: %v fail = %v, want %v", test.name, skip, test.want)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CalSkip(tt.args.page, tt.args.limit); got != tt.want {
+				t.Errorf("CalSkip() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
+
 func TestCreateProduct(t *testing.T) {
+	type args struct {
+		product                 types.InputCreateProduct
+		mockCreateProductReturn error
+	}
 	tests := []struct {
-		name       string
-		data       types.InputCreateProduct
-		createMock func(product types.InputCreateProduct) error
-		want       interface{}
+		name    string
+		args    args
+		want    types.OutputCreateProduct
+		wantErr bool
 	}{
 		{
-			name:       "Happy case",
-			data:       types.InputCreateProduct{Name: "Apple", Price: 100},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			want:       nil,
+			name:    "Create success case",
+			args:    args{product: types.InputCreateProduct{Name: "Apple", Price: 100}, mockCreateProductReturn: nil},
+			want:    types.OutputCreateProduct{Created: true, Message: ""},
+			wantErr: false,
 		},
 		{
-			name:       "Price required",
-			data:       types.InputCreateProduct{Name: "Apple", Price: 0},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			want:       errors.New("Price is required"),
+			name:    "Price required",
+			args:    args{product: types.InputCreateProduct{Name: "Apple", Price: 0}, mockCreateProductReturn: nil},
+			want:    types.OutputCreateProduct{Created: false, Message: "Price is required"},
+			wantErr: true,
 		},
 		{
-			name:       "Data create error case",
-			data:       types.InputCreateProduct{Name: "Apple", Price: 1},
-			createMock: func(product types.InputCreateProduct) error { return errors.New("Create Error") },
-			want:       errors.New("Create Error"),
+			name:    "Data create error case",
+			args:    args{product: types.InputCreateProduct{Name: "Apple", Price: 1}, mockCreateProductReturn: errors.New("Create Error")},
+			want:    types.OutputCreateProduct{Created: false, Message: "Product Create Error"},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		createMock = test.createMock
-		_, err := CreateProduct(test.data, productStorage)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		if !reflect.DeepEqual(err, test.want) {
-			t.Errorf("CreateProduct %v fail = %v, want %v", test.name, err, test.want)
-		}
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				Create(tt.args.product).
+				AnyTimes().
+				Return(tt.args.mockCreateProductReturn)
+
+			got, err := CreateProduct(tt.args.product, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateProduct() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CreateProduct() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestDeleteProduct(t *testing.T) {
+	type args struct {
+		product                 types.InputDeleteProduct
+		mockDeleteProductReturn error
+	}
 	tests := []struct {
-		name       string
-		data       types.InputDeleteProduct
-		deleteMock func(product types.InputDeleteProduct) error
-		want       interface{}
+		name    string
+		args    args
+		want    types.OutputDeleteProduct
+		wantErr bool
 	}{
 		{
-			name:       "Happy case",
-			data:       types.InputDeleteProduct{ID: "1"},
-			deleteMock: func(product types.InputDeleteProduct) error { return nil },
-			want:       nil,
+			name:    "Success delete case",
+			args:    args{product: types.InputDeleteProduct{ID: "1"}, mockDeleteProductReturn: nil},
+			want:    types.OutputDeleteProduct{Deleted: true, Message: ""},
+			wantErr: false,
 		},
 		{
-			name:       "ID required",
-			data:       types.InputDeleteProduct{},
-			deleteMock: func(product types.InputDeleteProduct) error { return nil },
-			want:       errors.New("ID is required"),
+			name:    "ID required",
+			args:    args{product: types.InputDeleteProduct{ID: ""}, mockDeleteProductReturn: nil},
+			want:    types.OutputDeleteProduct{Deleted: false, Message: "ID is required"},
+			wantErr: true,
 		},
 		{
-			name:       "Data delete func error case",
-			data:       types.InputDeleteProduct{ID: "1"},
-			deleteMock: func(product types.InputDeleteProduct) error { return errors.New("Delete Error") },
-			want:       errors.New("Delete Error"),
+			name:    "DB delete func error case",
+			args:    args{product: types.InputDeleteProduct{ID: "1"}, mockDeleteProductReturn: errors.New("Delete Error")},
+			want:    types.OutputDeleteProduct{Deleted: false, Message: "Product Delete Error"},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		deleteMock = test.deleteMock
-		_, err := DeleteProduct(test.data, productStorage)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		if !reflect.DeepEqual(err, test.want) {
-			t.Errorf("DeleteProduct: %v fail = %v, want %v", test.name, err, test.want)
-		}
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				Delete(tt.args.product).
+				AnyTimes().
+				Return(tt.args.mockDeleteProductReturn)
+
+			got, err := DeleteProduct(tt.args.product, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteProduct() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DeleteProduct() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestFindProductByID(t *testing.T) {
+	type mockFindProductReturn struct {
+		data []*models.Product
+		err  error
+	}
+	type args struct {
+		id                    string
+		mockFindProductReturn mockFindProductReturn
+	}
 	tests := []struct {
-		name         string
-		data         string
-		findByIDMock func(id string) ([]*models.Product, error)
-		want         interface{}
+		name    string
+		args    args
+		want    types.OutputProduct
+		wantErr bool
 	}{
 		{
-			name: "Happy case",
-			data: "1",
-			findByIDMock: func(id string) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, nil
-			},
-			want: nil,
+			name:    "Success find product by ID",
+			args:    args{id: "1", mockFindProductReturn: mockFindProductReturn{data: []*models.Product{{Name: "Product"}}, err: nil}},
+			want:    types.OutputProduct{Message: "", Data: []*models.Product{{Name: "Product"}}},
+			wantErr: false,
 		},
 		{
-			name: "ID required case",
-			data: "",
-			findByIDMock: func(id string) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, nil
-			},
-			want: errors.New("ID is required"),
+			name:    "ID Required case",
+			args:    args{id: "", mockFindProductReturn: mockFindProductReturn{data: []*models.Product{{Name: "Product"}}, err: nil}},
+			want:    types.OutputProduct{Message: "ID is required"},
+			wantErr: true,
 		},
 		{
-			name: "Database FindByID func error case",
-			data: "1",
-			findByIDMock: func(id string) (result []*models.Product, error error) {
-				return result, errors.New("FindByID Error")
-			},
-			want: errors.New("FindByID Error"),
+			name:    "Database FindByID func error case",
+			args:    args{id: "2", mockFindProductReturn: mockFindProductReturn{data: []*models.Product{}, err: errors.New("FindByID Error")}},
+			want:    types.OutputProduct{Message: "Product FindByID Error"},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		findByIDMock = test.findByIDMock
-		_, err := FindProductByID(test.data, productStorage)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		if !reflect.DeepEqual(err, test.want) {
-			t.Errorf("FindProductByID: %v fail  = %v, want %v", test.name, err, test.want)
-		}
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				FindByID(tt.args.id).
+				AnyTimes().
+				Return(tt.args.mockFindProductReturn.data, tt.args.mockFindProductReturn.err)
+
+			got, err := FindProductByID(tt.args.id, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindProductByID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindProductByID() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestFindProducts(t *testing.T) {
-	type inputPage struct {
-		page  int64
+	type mockFindProductInput struct {
+		skip  int64
 		limit int64
 	}
+	type mockFindProductReturn struct {
+		data []*models.Product
+		err  error
+	}
+	type mockCountProductReturn struct {
+		result int64
+		err    error
+	}
+	type args struct {
+		page                   int64
+		limit                  int64
+		mockFindProductInput   mockFindProductInput
+		mockFindProductReturn  mockFindProductReturn
+		mockCountProductInput  types.InputProduct
+		mockCountProductReturn mockCountProductReturn
+	}
 	tests := []struct {
-		name      string
-		data      inputPage
-		findMock  func(skip int64, limit int64) ([]*models.Product, error)
-		countMock func(product types.InputProduct) (int64, error)
-		want      interface{}
+		name    string
+		args    args
+		want    types.OutputProducts
+		wantErr bool
 	}{
 		{
-			name: "Happy case use default page and limit",
-			data: inputPage{},
-			findMock: func(skip int64, limit int64) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, nil
+			name: "Success find product",
+			args: args{
+				mockFindProductInput:   mockFindProductInput{0, 10},
+				mockFindProductReturn:  mockFindProductReturn{data: []*models.Product{{Name: "Product"}}, err: nil},
+				mockCountProductInput:  types.InputProduct{},
+				mockCountProductReturn: mockCountProductReturn{result: 1, err: nil},
 			},
-			countMock: func(product types.InputProduct) (int64, error) { return 1, nil },
-			want:      nil,
-		},
-		{
-			name: "Happy case",
-			data: inputPage{page: 1, limit: 10},
-			findMock: func(skip int64, limit int64) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, nil
-			},
-			countMock: func(product types.InputProduct) (int64, error) { return 1, nil },
-			want:      nil,
+			want:    types.OutputProducts{Message: "", Totals: 1, Data: []*models.Product{{Name: "Product"}}},
+			wantErr: false,
 		},
 		{
 			name: "Request invalid page",
-			data: inputPage{page: 2, limit: 10}, // Data criteria
-			findMock: func(skip int64, limit int64) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, nil
+			args: args{
+				page: 2, limit: 10,
+				mockFindProductInput:   mockFindProductInput{10, 10},
+				mockFindProductReturn:  mockFindProductReturn{data: []*models.Product{{Name: "Product"}}, err: nil},
+				mockCountProductInput:  types.InputProduct{},
+				mockCountProductReturn: mockCountProductReturn{result: 1, err: nil},
 			},
-			countMock: func(product types.InputProduct) (int64, error) { return 10, nil }, // Data criteria
-			want:      errors.New("Invalid Page"),
+			want:    types.OutputProducts{Message: "Invalid Page", Totals: 1},
+			wantErr: true,
 		},
 		{
-			name: "Database error case",
-			data: inputPage{page: 1, limit: 10},
-			findMock: func(skip int64, limit int64) ([]*models.Product, error) {
-				var result []*models.Product
-				return result, errors.New("Database Error") // Return error
+			name: "Find product database error",
+			args: args{
+				page: 1, limit: 10,
+				mockFindProductInput:   mockFindProductInput{0, 10},
+				mockFindProductReturn:  mockFindProductReturn{data: []*models.Product{}, err: errors.New("Find Error")},
+				mockCountProductInput:  types.InputProduct{},
+				mockCountProductReturn: mockCountProductReturn{result: 1, err: nil},
 			},
-			countMock: func(product types.InputProduct) (int64, error) { return 10, nil },
-			want:      errors.New("Database Error"), // Expect error
+			want:    types.OutputProducts{Message: "Product Find Error", Totals: 1},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		findMock = test.findMock
-		countMock = test.countMock
-		_, err := FindProducts(test.data.page, test.data.limit, productStorage)
-		if !reflect.DeepEqual(err, test.want) {
-			t.Errorf("FindProducts: %v fail  = %v, want %v", test.name, err, test.want)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				Count(tt.args.mockCountProductInput).
+				AnyTimes().
+				Return(tt.args.mockCountProductReturn.result, tt.args.mockCountProductReturn.err)
+
+			mockProduct.EXPECT().
+				Find(tt.args.mockFindProductInput.skip, tt.args.mockFindProductInput.limit).
+				AnyTimes().
+				Return(tt.args.mockFindProductReturn.data, tt.args.mockFindProductReturn.err)
+
+			got, err := FindProducts(tt.args.page, tt.args.limit, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindProducts() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindProducts() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestUpdateProduct(t *testing.T) {
+	type args struct {
+		product                 types.InputProduct
+		mockUpdateProductReturn error
+	}
 	tests := []struct {
-		name       string
-		data       types.InputProduct
-		updateMock func(product types.InputProduct) error
-		want       interface{}
+		name    string
+		args    args
+		want    types.OutputUpdateProduct
+		wantErr bool
 	}{
 		{
-			name:       "Happy case",
-			data:       types.InputProduct{ID: "1"},
-			updateMock: func(product types.InputProduct) error { return nil },
-			want:       nil,
+			name: "Success update product",
+			args: args{
+				product:                 types.InputProduct{ID: "1"},
+				mockUpdateProductReturn: nil,
+			},
+			want: types.OutputUpdateProduct{
+				Updated: true,
+				Created: false,
+			},
+			wantErr: false,
 		},
 		{
-			name:       "Data update error case",
-			data:       types.InputProduct{ID: "1"},
-			updateMock: func(product types.InputProduct) error { return errors.New("Update Error") },
-			want:       errors.New("Update Error"),
+			name: "Update product database error",
+			args: args{
+				product:                 types.InputProduct{ID: "1"},
+				mockUpdateProductReturn: errors.New("Update Error"),
+			},
+			want: types.OutputUpdateProduct{
+				Updated: false,
+				Created: false,
+				Message: "Product Update Error",
+			},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		updateMock = test.updateMock
-		_, err := UpdateProduct(test.data, productStorage)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		if !reflect.DeepEqual(err, test.want) {
-			t.Errorf("UpdateProduct: %v fail = %v, want %v", test.name, err, test.want)
-		}
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				Update(tt.args.product).
+				AnyTimes().
+				Return(tt.args.mockUpdateProductReturn)
+
+			got, err := UpdateProduct(tt.args.product, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateProduct() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UpdateProduct() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestUpsertProduct(t *testing.T) {
-	type want struct {
-		Err     interface{}
-		Created bool
-		Updated bool
+	type mockOutputCountProduct struct {
+		numberProduct int64
+		err           error
+	}
+	type args struct {
+		product                 types.InputProduct
+		mockOutputCountProduct  mockOutputCountProduct
+		mockOutputCreateProduct error
+		mockOutputUpdateProduct error
+		mockInputCreateProduct  types.InputCreateProduct
 	}
 	tests := []struct {
-		name       string
-		data       types.InputProduct
-		createMock func(product types.InputCreateProduct) error
-		countMock  func(product types.InputProduct) (int64, error)
-		updateMock func(product types.InputProduct) error
-		want       want
+		name    string
+		args    args
+		want    types.OutputUpdateProduct
+		wantErr bool
 	}{
 		{
-			name:       "Update case",
-			data:       types.InputProduct{ID: "1"},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			countMock:  func(product types.InputProduct) (int64, error) { return 1, nil },
-			updateMock: func(product types.InputProduct) error { return nil },
-			want: want{
-				Err:     nil,
+			name: "Success update product",
+			args: args{
+				product:                 types.InputProduct{ID: "1", Name: "Product"},
+				mockOutputCountProduct:  mockOutputCountProduct{1, nil},
+				mockOutputCreateProduct: nil,
+				mockOutputUpdateProduct: nil,
+			},
+			want: types.OutputUpdateProduct{
 				Created: false,
 				Updated: true,
 			},
+			wantErr: false,
 		},
 		{
-			name:       "Create case",
-			data:       types.InputProduct{ID: "1"},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			countMock:  func(product types.InputProduct) (int64, error) { return 0, nil },
-			updateMock: func(product types.InputProduct) error { return nil },
-			want: want{
-				Err:     nil,
+			name: "Success create product",
+			args: args{
+				product:                 types.InputProduct{ID: "2", Name: "Product New"},
+				mockInputCreateProduct:  types.InputCreateProduct{Name: "Product New"},
+				mockOutputCountProduct:  mockOutputCountProduct{0, nil},
+				mockOutputCreateProduct: nil,
+				mockOutputUpdateProduct: nil,
+			},
+			want: types.OutputUpdateProduct{
 				Created: true,
 				Updated: false,
 			},
+			wantErr: false,
 		},
 		{
-			name:       "Database Count func err case",
-			data:       types.InputProduct{ID: "1"},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			countMock:  func(product types.InputProduct) (int64, error) { return 1, errors.New("Count Err") },
-			updateMock: func(product types.InputProduct) error { return nil },
-			want: want{
-				Err:     errors.New("Count Err"),
+			name: "Count database error",
+			args: args{
+				product:                 types.InputProduct{ID: "2", Name: "Product New"},
+				mockInputCreateProduct:  types.InputCreateProduct{Name: "Product New"},
+				mockOutputCountProduct:  mockOutputCountProduct{0, errors.New("Count Error")},
+				mockOutputCreateProduct: nil,
+				mockOutputUpdateProduct: nil,
+			},
+			want: types.OutputUpdateProduct{
 				Created: false,
 				Updated: false,
+				Message: "Product Count Error",
 			},
+			wantErr: true,
 		},
 		{
-			name:       "Database Update func err case",
-			data:       types.InputProduct{ID: "1"},
-			createMock: func(product types.InputCreateProduct) error { return nil },
-			countMock:  func(product types.InputProduct) (int64, error) { return 1, nil },
-			updateMock: func(product types.InputProduct) error { return errors.New("Update Err") },
-			want: want{
-				Err:     errors.New("Update Err"),
+			name: "Update database error",
+			args: args{
+				product:                 types.InputProduct{ID: "1", Name: "Product"},
+				mockOutputCountProduct:  mockOutputCountProduct{1, nil},
+				mockOutputCreateProduct: nil,
+				mockOutputUpdateProduct: errors.New("Update Error"),
+			},
+			want: types.OutputUpdateProduct{
 				Created: false,
 				Updated: false,
+				Message: "Product Update Error",
 			},
+			wantErr: true,
 		},
 		{
-			name:       "Database Create func err case",
-			data:       types.InputProduct{ID: "1"},
-			createMock: func(product types.InputCreateProduct) error { return errors.New("Create Err") },
-			countMock:  func(product types.InputProduct) (int64, error) { return 0, nil },
-			updateMock: func(product types.InputProduct) error { return nil },
-			want: want{
-				Err:     errors.New("Create Err"),
+			name: "Create database error",
+			args: args{
+				product:                 types.InputProduct{ID: "2", Name: "Product New"},
+				mockInputCreateProduct:  types.InputCreateProduct{Name: "Product New"},
+				mockOutputCountProduct:  mockOutputCountProduct{0, nil},
+				mockOutputCreateProduct: errors.New("Create Error"),
+				mockOutputUpdateProduct: nil,
+			},
+			want: types.OutputUpdateProduct{
 				Created: false,
 				Updated: false,
+				Message: "Product Create Error",
 			},
+			wantErr: true,
 		},
 	}
-	for _, test := range tests {
-		productStorage := productStorageMock{}
-		createMock = test.createMock
-		countMock = test.countMock
-		updateMock = test.updateMock
-		result, err := UpsertProduct(test.data, productStorage)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		if !reflect.DeepEqual(err, test.want.Err) {
-			t.Errorf("UpsertProduct: %v fail = %v, want err %v", test.name, err, test.want.Err)
-		}
-		if result.Created != test.want.Created {
-			t.Errorf("UpsertProduct: %v create result = %v, want Created %v", test.name, result.Created, test.want.Created)
-		}
-		if result.Updated != test.want.Updated {
-			t.Errorf("UpsertProduct: %v update result = %v, want Updated %v", test.name, result.Updated, test.want.Updated)
-		}
+			mockProduct := mock.NewMockProduct(ctrl)
+			mockProduct.EXPECT().
+				Count(tt.args.product).
+				AnyTimes().
+				Return(tt.args.mockOutputCountProduct.numberProduct, tt.args.mockOutputCountProduct.err)
+			mockProduct.EXPECT().
+				Create(tt.args.mockInputCreateProduct).
+				AnyTimes().
+				Return(tt.args.mockOutputCreateProduct)
+			mockProduct.EXPECT().
+				Update(tt.args.product).
+				AnyTimes().
+				Return(tt.args.mockOutputUpdateProduct)
+
+			got, err := UpsertProduct(tt.args.product, mockProduct)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpsertProduct() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UpsertProduct() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
