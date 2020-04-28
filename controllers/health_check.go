@@ -8,8 +8,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// HealthCheck route for check API
-func HealthCheck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// HealthCheck Defines properties
+type HealthCheck struct{}
+
+// GetHealthCheck route for check API
+func (hc HealthCheck) GetHealthCheck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	var results = types.OutputHealthCheck{
 		Message: "API OK",

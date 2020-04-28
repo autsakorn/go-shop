@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/autsakorn/go-shop/config"
 	"github.com/autsakorn/go-shop/models"
 	"github.com/autsakorn/go-shop/types"
 	"go.mongodb.org/mongo-driver/bson"
@@ -30,17 +29,6 @@ type Product interface {
 // ProductStorage defines properties
 type ProductStorage struct {
 	Collection mongo.Collection
-}
-
-// NewProductStorage connect mongo and return collection
-func NewProductStorage(client *mongo.Client) (Product, error) {
-
-	env, _ := config.FromEnv()
-
-	collection := client.Database(env.MongoDatabase).Collection(collectionName)
-	return ProductStorage{
-		Collection: *collection,
-	}, nil
 }
 
 // Create new product

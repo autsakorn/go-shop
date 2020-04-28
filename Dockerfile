@@ -3,6 +3,8 @@
 # Start from the latest golang base image
 FROM golang:1.13-alpine
 
+ENV CGO_ENABLED=0
+
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
