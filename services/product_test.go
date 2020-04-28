@@ -29,7 +29,8 @@ func TestCalSkip(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CalSkip(tt.args.page, tt.args.limit); got != tt.want {
+			productService := NewProductService()
+			if got := productService.CalSkip(tt.args.page, tt.args.limit); got != tt.want {
 				t.Errorf("CalSkip() = %v, want %v", got, tt.want)
 			}
 		})
@@ -77,7 +78,8 @@ func TestCreateProduct(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockCreateProductReturn)
 
-			got, err := CreateProduct(tt.args.product, mockProduct)
+			productService := NewProductService()
+			got, err := productService.CreateProduct(tt.args.product, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateProduct() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -130,7 +132,8 @@ func TestDeleteProduct(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockDeleteProductReturn)
 
-			got, err := DeleteProduct(tt.args.product, mockProduct)
+			productService := NewProductService()
+			got, err := productService.DeleteProduct(tt.args.product, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DeleteProduct() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -187,7 +190,8 @@ func TestFindProductByID(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockFindProductReturn.data, tt.args.mockFindProductReturn.err)
 
-			got, err := FindProductByID(tt.args.id, mockProduct)
+			productService := NewProductService()
+			got, err := productService.FindProductByID(tt.args.id, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindProductByID() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -279,7 +283,8 @@ func TestFindProducts(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockFindProductReturn.data, tt.args.mockFindProductReturn.err)
 
-			got, err := FindProducts(tt.args.page, tt.args.limit, mockProduct)
+			productService := NewProductService()
+			got, err := productService.FindProducts(tt.args.page, tt.args.limit, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindProducts() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -339,7 +344,8 @@ func TestUpdateProduct(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockUpdateProductReturn)
 
-			got, err := UpdateProduct(tt.args.product, mockProduct)
+			productService := NewProductService()
+			got, err := productService.UpdateProduct(tt.args.product, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateProduct() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -465,7 +471,8 @@ func TestUpsertProduct(t *testing.T) {
 				AnyTimes().
 				Return(tt.args.mockOutputUpdateProduct)
 
-			got, err := UpsertProduct(tt.args.product, mockProduct)
+			productService := NewProductService()
+			got, err := productService.UpsertProduct(tt.args.product, mockProduct)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpsertProduct() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -8,8 +8,27 @@ import (
 	"github.com/autsakorn/go-shop/types"
 )
 
+// Product represents all possible actions
+type Product interface {
+	CalSkip(int64, int64) int64
+	CreateProduct(types.InputCreateProduct, storage.Product) (types.OutputCreateProduct, error)
+	DeleteProduct(types.InputDeleteProduct, storage.Product) (types.OutputDeleteProduct, error)
+	FindProductByID(string, storage.Product) (types.OutputProduct, error)
+	FindProducts(int64, int64, storage.Product) (types.OutputProducts, error)
+	UpdateProduct(types.InputProduct, storage.Product) (types.OutputUpdateProduct, error)
+	UpsertProduct(types.InputProduct, storage.Product) (types.OutputUpdateProduct, error)
+}
+
+// ProductService defines properties
+type ProductService struct{}
+
+// NewProductService return NewProductService
+func NewProductService() ProductService {
+	return ProductService{}
+}
+
 // CalSkip function for calulate skip
-func CalSkip(page int64, limit int64) int64 {
+func (ps ProductService) CalSkip(page int64, limit int64) int64 {
 	if page > 0 {
 		return (page - 1) * limit
 	}
@@ -17,7 +36,7 @@ func CalSkip(page int64, limit int64) int64 {
 }
 
 // CreateProduct product service
-func CreateProduct(
+func (ps ProductService) CreateProduct(
 	product types.InputCreateProduct,
 	sProduct storage.Product,
 ) (types.OutputCreateProduct, error) {
@@ -41,7 +60,7 @@ func CreateProduct(
 }
 
 // DeleteProduct delete product service
-func DeleteProduct(
+func (ps ProductService) DeleteProduct(
 	product types.InputDeleteProduct,
 	sProduct storage.Product,
 ) (types.OutputDeleteProduct, error) {
@@ -63,7 +82,7 @@ func DeleteProduct(
 }
 
 // FindProductByID find product by ID
-func FindProductByID(
+func (ps ProductService) FindProductByID(
 	id string,
 	sProduct storage.Product,
 ) (types.OutputProduct, error) {
@@ -85,7 +104,7 @@ func FindProductByID(
 }
 
 // FindProducts find all product
-func FindProducts(
+func (ps ProductService) FindProducts(
 	page int64,
 	limit int64,
 	sProduct storage.Product,
@@ -104,7 +123,7 @@ func FindProducts(
 	totals, _ := sProduct.Count(input)
 	results.Totals = totals
 
-	skip := CalSkip(page, limit)
+	skip := ps.CalSkip(page, limit)
 	if (skip + 1) > totals {
 		errMessage := "Invalid Page"
 		results.Message = errMessage
@@ -121,7 +140,7 @@ func FindProducts(
 }
 
 // UpdateProduct update product by ID
-func UpdateProduct(
+func (ps ProductService) UpdateProduct(
 	product types.InputProduct,
 	sProduct storage.Product,
 ) (types.OutputUpdateProduct, error) {
@@ -139,7 +158,7 @@ func UpdateProduct(
 }
 
 // UpsertProduct service, create or update if exists
-func UpsertProduct(
+func (ps ProductService) UpsertProduct(
 	product types.InputProduct,
 	sProduct storage.Product,
 ) (types.OutputUpdateProduct, error) {
